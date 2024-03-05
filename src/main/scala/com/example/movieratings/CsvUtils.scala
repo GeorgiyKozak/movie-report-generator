@@ -15,6 +15,13 @@ import java.time.format.DateTimeFormatter
  */
 object CsvUtils {
 
+  val MovieIDKey = 0
+  val MovieReleaseYearKey = 1
+  val MovieTitleKey = 2
+  val CustomerIDKey = 0
+  val RatingKey = 1
+  val ReviewDateKey = 2
+
   /** Reads records from a CSV file.
    *
    * Examples:
@@ -53,20 +60,20 @@ object CsvUtils {
 
   def convertCsvRecordToMovie(record: CSVRecord): Movie = {
     Movie(
-      movieID = MovieID(record.get(0).toShort),
-      releaseYear = if (record.get(1) == "NULL") { ReleaseYear(0) } else { ReleaseYear(record.get(1).toShort) },
-      title = record.get(2)
+      movieID = MovieID(record.get(MovieIDKey).toShort),
+      releaseYear = if (record.get(MovieReleaseYearKey) == "NULL") { ReleaseYear(0) } else { ReleaseYear(record.get(MovieReleaseYearKey).toShort) },
+      title = record.get(MovieTitleKey)
     )
   }
 
   val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
   def convertCsvRecordToMovieReview(movieID: MovieID, record: CSVRecord): MovieReview = {
-    val reviewDate = LocalDate.parse(record.get(2), dateFormatter)
+    val reviewDate = LocalDate.parse(record.get(ReviewDateKey), dateFormatter)
     MovieReview(
       movieID = movieID,
-      customerID = CustomerID(record.get(0).toLong),
-      rating = record.get(1).toByte,
+      customerID = CustomerID(record.get(CustomerIDKey).toLong),
+      rating = record.get(RatingKey).toByte,
       date = reviewDate
     )
   }

@@ -6,7 +6,10 @@ object Domain {
 
   case class MovieID(id: Short) extends AnyVal
 
-  case class ReleaseYear(value: Short) extends AnyVal
+  case class ReleaseYear(value: Short) extends AnyVal {
+    def lt(other: ReleaseYear): Boolean =
+      value < other.value
+  }
 
   case class CustomerID(id: Long) extends AnyVal
 
