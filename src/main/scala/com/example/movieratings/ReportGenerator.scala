@@ -1,12 +1,12 @@
 package com.example.movieratings
 
-import java.io.{File, FileNotFoundException, IOException}
-import com.example.movieratings.Errors.InconsistentMovieIdInMovieReviewsFileError
-import com.example.movieratings.Domain.{Movie, MovieID, MovieReport, MovieReview, ReleaseYear}
 import com.example.movieratings.CsvUtils._
+import com.example.movieratings.Domain._
+import com.example.movieratings.Errors.InconsistentMovieIdInMovieReviewsFileError
 import com.typesafe.scalalogging.StrictLogging
 import org.apache.commons.csv.CSVRecord
 
+import java.io.{File, FileNotFoundException}
 import scala.util.matching.Regex
 
 object ReportGenerator extends StrictLogging {
@@ -48,7 +48,7 @@ object ReportGenerator extends StrictLogging {
         val outputFileWithReport: File = new File(pathToReportOutputFile)
 
         // Filter all movies by the release year
-        val suitableMovies: List[Movie] = getMoviesFromFile(moviesFile).filter(isSuitableMovie)
+        val suitableMovies: List[Movie] = readMovies(moviesFile).filter(isSuitableMovie)
         val suitableMoviesMap: Map[MovieID, Movie] = suitableMovies.map { movie => (movie.movieID, movie) }.toMap
 
         // Retrieve stream of all files in the directory
@@ -71,13 +71,13 @@ object ReportGenerator extends StrictLogging {
 
   def generateMovieReports(filesWithMovieReviews: Stream[File], suitableMovies: Map[MovieID, Movie]): List[MovieReport] = {
     filesWithMovieReviews.filter { isSuitableFileWithMovieReviews(suitableMovies.keySet, _) }.flatMap { fileWithReviews =>
-      getMovieReviewsFromFile(fileWithReviews)
+      readMovieReviews(fileWithReviews)
     }.map { case (movieID, movieReviews) =>
-      createMovieReport(suitableMovies: Map[MovieID, Movie], movieID, movieReviews)
+      generateMovieReport(suitableMovies: Map[MovieID, Movie], movieID, movieReviews)
     }.toList
   }
 
-  def createMovieReport(suitableMovies: Map[MovieID, Movie], movieID: MovieID, movieReviews: List[MovieReview]): MovieReport = {
+  def generateMovieReport(suitableMovies: Map[MovieID, Movie], movieID: MovieID, movieReviews: List[MovieReview]): MovieReport = {
       val movie = suitableMovies.getOrElse(movieID, throw InconsistentMovieIdInMovieReviewsFileError(movieID))
       MovieReport(
         movieTitle = movie.title,
@@ -88,19 +88,19 @@ object ReportGenerator extends StrictLogging {
   }
 
   def calculateAverageRating(movieReviews: List[MovieReview]): Double = {
-    val sum = movieReviews.map(_.rating).foldLeft(0.0) { (acc, rating) => acc + rating }
+    val sum = movieReviews.map(_.rating.toDouble).sum
     sum / movieReviews.size
   }
 
-  def getMoviesFromFile(file: File): List[Movie] =
+  def readMovies(file: File): List[Movie] =
     readFromFileAsList(file) map { record: CSVRecord =>
       convertCsvRecordToMovie(record)
     }
 
-  def getMovieReviewsFromFile(file: File): Option[(MovieID, List[MovieReview])] = {
+  def readMovieReviews(file: File): Option[(MovieID, List[MovieReview])] = {
     val allRecords: List[CSVRecord] = readFromFileAsList(file)
     val header = allRecords.head
-    val movieID: MovieID = MovieID(header.get(MovieReviewsFileHeaderKey).split(":").head.toShort)
+    val movieID: MovieID = MovieID(header.get(MovieReviewsFileHeaderKey).dropRight(1).toShort)
 
     if ((allRecords.size - 1) > MinNumberOfReviews) {
       val movieReviews: List[MovieReview] = allRecords.tail map { record: CSVRecord =>
